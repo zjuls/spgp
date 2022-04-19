@@ -25,7 +25,10 @@ class PDF(torch.autograd.Function):
     @staticmethod
     def forward(self, inpt):
         self.save_for_backward(inpt)
-        return inpt.gt(0).float()
+        p = torch.ones(inpt.size(), device=device) - torch.exp(-1 * inpt)
+        p2 = torch.rand(inpt.size(),device = device)
+        x = p > p2
+        return x.float()
 
     @staticmethod
     def backward(self, grad_output):
@@ -54,8 +57,7 @@ def state_update(u, o, i, decay, Vth):
 def state_spgp(u, o, i, decay, Vth):
     u = decay * u + i - o * Vth
     o = Act_spgp(u - Vth)
-    out = torch.relu(u)
-    return u, o, out
+    return u, o
 def accumulated_state(u, o):
     u_ = 0.5 * u + o
     return u_
@@ -119,18 +121,16 @@ class LIF_spgp(nn.Module):
             else:
                 u = torch.zeros(x.shape[:-1], device=x.device)
                 out = torch.zeros(x.shape, device=x.device)
-                v = torch.zeros(x.shape, device=x.device)
                 for step in range(steps):
-                    u, out[..., step], v[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
-                return v
+                    u, out[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
+                return out
 
         else:
             u = torch.zeros(x.shape[:-1], device=x.device)
             out = torch.zeros(x.shape, device=x.device)
-            v = torch.zeros(x.shape, device=x.device)
             for step in range(steps):
-                u, out[..., step], v[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
-            return v
+                u, out[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
+            return out
 
 class tdLayer(nn.Module):
     def __init__(self, layer,):
