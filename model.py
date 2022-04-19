@@ -15,7 +15,7 @@ class MNIST_Net(nn.Module):  # Example net for CIFAR10
 
         self.fc1_s = tdLayer(nn.Linear(self.basic_channel * 2, 200, bias=True))
         self.fc2_s = tdLayer(nn.Linear(200, num_classes, bias=True))
-        #self.fc3_s = tdLayer(nn.Linear(512, num_classes, bias=True))
+        
 
         self.spike = LIF()
         self.spgp = LIF_spgp()
