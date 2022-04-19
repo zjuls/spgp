@@ -26,10 +26,13 @@ class MNIST_Net(nn.Module):  # Example net for CIFAR10
 
         x = self.bn0(self.conv0_s(x.float()))
         x = self.spike(x)
+        x = self.pool0_s(x)
+        
 
         x = self.bn1(self.conv1_s(x))
+        x = self.spike(x)
         x = self.pool1_s(x)
-        x = self.spgp(x)
+        
 
         x = x.view(x.shape[0], -1, x.shape[4])
         x = self.fc1_s(x)
