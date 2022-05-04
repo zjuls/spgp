@@ -11,14 +11,14 @@ class MNIST_Net(nn.Module):  # Example net for CIFAR10
         self.conv0_s = tdLayer(nn.Conv2d(in_channels, self.basic_channel, 3, 1, 1, bias=True))
         self.pool0_s = tdLayer(nn.AvgPool2d(2))
         self.conv1_s = tdLayer(nn.Conv2d(self.basic_channel, self.basic_channel*2, 3, 1, 1, bias=True))
-        self.pool1_s = tdLayer(nn.AdaptiveAvgPool2d((1,1)))
+        self.pool1_s = tdLayer(nn.AvgPool2d(2))
 
-        self.fc1_s = tdLayer(nn.Linear(self.basic_channel * 2, 200, bias=True))
+        self.fc1_s = tdLayer(nn.Linear(7 * 7 * self.basic_channel * 2, 200, bias=True))
         self.fc2_s = tdLayer(nn.Linear(200, num_classes, bias=True))
         
 
         self.spike = LIF()
-        self.spgp = LIF_spgp()
+    
         self.trace = trace
     def forward(self, x):
         x, _ = torch.broadcast_tensors(x, torch.zeros((steps,) + x.shape))
