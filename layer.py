@@ -54,10 +54,7 @@ def state_update(u, o, i, decay, Vth):
     u = decay * u + i - o * Vth
     o = Act(u - Vth)
     return u, o
-def state_spgp(u, o, i, decay, Vth):
-    u = decay * u + i - o * Vth
-    o = Act_spgp(u - Vth)
-    return u, o
+
 def accumulated_state(u, o):
     u_ = 0.5 * u + o
     return u_
@@ -96,41 +93,7 @@ class LIF(nn.Module):
                 u, out[..., step] = state_update(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
             return out
 
-class LIF_spgp(nn.Module):
-    """对带有时间维度的张量进行一次LIF神经元的发放模拟，可以视为一个激活函数，用法类似ReLU。
-        Generates spikes based on LIF module. It can be considered as an activation function and is used similar to ReLU. The input tensor needs to have an additional time dimension, which in this case is on the last dimension of the data.
-    """
-    def __init__(self):
-        super(LIF_spgp, self).__init__()
-        init_decay = 0.2
-        ini_v = 0.5 #0.5
 
-        #self.nrom = torch.norm(w.detach().cpu(), None, dim=None)
-        self.decay = nn.Parameter(torch.tensor(init_decay, dtype=torch.float), requires_grad=True)
-        self.decay.data.clamp_(0., 1.)
-        self.vth = ini_v #torch.nn.Parameter(torch.tensor(ini_v, dtype=torch.float), requires_grad=True)
-        # self.vth.data.clamp_(0., 1.)
-
-    def forward(self, x, output = False, vmem = False):
-        if output:
-            if not vmem:
-                u = torch.zeros(x.shape[:-1], device=x.device)
-                for step in range(steps):
-                    u = accumulated_state(u, x[..., step])
-                return u
-            else:
-                u = torch.zeros(x.shape[:-1], device=x.device)
-                out = torch.zeros(x.shape, device=x.device)
-                for step in range(steps):
-                    u, out[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
-                return out
-
-        else:
-            u = torch.zeros(x.shape[:-1], device=x.device)
-            out = torch.zeros(x.shape, device=x.device)
-            for step in range(steps):
-                u, out[..., step] = state_spgp(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
-            return out
 
 class tdLayer(nn.Module):
     def __init__(self, layer,):
