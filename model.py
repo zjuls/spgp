@@ -1,22 +1,24 @@
 from layer import *
 
 class MNIST_Net(nn.Module):  # Example net for CIFAR10
-    def __init__(self, num_classes = 11, in_channels = 2, trace = False, basic_channel = 64):
+    def __init__(self, num_classes = 10, in_channels = 2, trace = False, basic_channel = 64, spgp = Flase):
         super(MNIST_Net, self).__init__()
         self.basic_channel = basic_channel
         self.trace = trace
+        self.spgp = spgp
         self.bn0 = TemporalBN(self.basic_channel,steps)#tdBatchNorm(nn.BatchNorm2d(64))
         self.bn1 = TemporalBN(self.basic_channel*2,steps)#tdBatchNorm(nn.BatchNorm2d(128))
 
         self.conv0_s = tdLayer(nn.Conv2d(in_channels, self.basic_channel, 3, 1, 1, bias=True))
         self.pool0_s = tdLayer(nn.AvgPool2d(2))
         self.conv1_s = tdLayer(nn.Conv2d(self.basic_channel, self.basic_channel*2, 3, 1, 1, bias=True))
-        self.pool1_s = tdLayer(nn.AvgPool2d(2))
-
-        self.fc1_s = tdLayer(nn.Linear(7 * 7 * self.basic_channel * 2, 200, bias=True))
-        self.fc2_s = tdLayer(nn.Linear(200, num_classes, bias=True))
-        
-
+        if not self.spgp:
+            self.pool1_s = tdLayer(nn.AvgPool2d(2))
+            self.fc1_s = tdLayer(nn.Linear(7 * 7 * self.basic_channel * 2, 200, bias=True))
+            self.fc2_s = tdLayer(nn.Linear(200, num_classes, bias=True))
+        else:
+            self.pool1_s = SPGP()
+            self.fc1_s = tdLayer(nn.Linear(self.basic_channel * 2, num_classes, bias=True))
         self.spike = LIF()
     
         self.trace = trace
@@ -31,14 +33,18 @@ class MNIST_Net(nn.Module):  # Example net for CIFAR10
 
         x = self.bn1(self.conv1_s(x))
         x = self.spike(x)
-        x = self.pool1_s(x)
-        
-
-        x = x.view(x.shape[0], -1, x.shape[4])
-        x = self.fc1_s(x)
-        x = self.spike(x)
-        x = self.fc2_s(x)
-        x = self.spike(x, output = True, vmem = self.trace)
+        if not self.spgp
+            x = self.pool1_s(x)
+            x = x.view(x.shape[0], -1, x.shape[4])
+            x = self.fc1_s(x)
+            x = self.spike(x)
+            x = self.fc2_s(x)
+            x = self.spike(x, output = True, vmem = self.trace)
+        else:
+            x = self.pool1_s(x)
+            x = x.view(x.shape[0], -1, x.shape[4])
+            x = self.fc1_s(x)
+            x = self.spike(x, output = True, vmem = self.trace)
         return x
 
 
