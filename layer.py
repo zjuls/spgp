@@ -59,6 +59,11 @@ def accumulated_state(u, o):
     u_ = 0.5 * u + o
     return u_
 
+def prob_state_update(u, o, i, decay, Vth):
+    u = decay * u + i - o * Vth
+    o = Act(u - Vth)
+    return u, o
+
 class LIF(nn.Module):
     def __init__(self):
         super(LIF, self).__init__()
@@ -94,7 +99,6 @@ class LIF(nn.Module):
             return out
 
 
-
 class tdLayer(nn.Module):
     def __init__(self, layer,):
         super(tdLayer, self).__init__()
@@ -119,4 +123,23 @@ class TemporalBN(nn.Module):
             out.append(self.bns[t](x[..., t]))
         out = torch.stack(out, dim=stack_dim)
         return out
+    
+class SPGP(nn.Module):
+    def __init__(self):
+        super(SPGP, self).__init__()
+        init_decay = 0.2
+        ini_v = 1
 
+        #self.nrom = torch.norm(w.detach().cpu(), None, dim=None)
+        self.decay = nn.Parameter(torch.tensor(init_decay, dtype=torch.float), requires_grad=True)
+        self.decay.data.clamp_(0., 1.)
+        self.vth = ini_v
+        self.gap = tdLayer(nn.AdaptiveAvgPool2d((1,1)), steps)
+
+    def forward(self, x):
+        x = sepl.gap(x)
+        u = torch.zeros(x.shape[:-1], device=x.device)
+        out = torch.zeros(x.shape, device=x.device)
+        for step in range(steps):
+            u, out[..., step] = prob_state_update(u, out[..., max(step - 1, 0)], x[..., step], self.decay, self.vth)
+        return out
