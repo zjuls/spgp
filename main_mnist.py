@@ -6,12 +6,12 @@ import os
 import time
 import tqdm
 import numpy as np
-data_path = r'G:/' #todo: input your data path
+data_path = r'/home/liam' #todo: input your data path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-num_epochs = 20
-batch_size = 50
-learning_rate_2 = 3e-4
+num_epochs = 100
+batch_size = 150
+learning_rate_2 = 1e-3
 num_classes = 10
 train_dataset = torchvision.datasets.MNIST(root= data_path, train=True, download=False, transform=transforms.Compose([transforms.RandomCrop(28, padding=2), transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])) #transforms.RandomVerticalFlip(),transforms.RandomHorizontalFlip(),
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -22,8 +22,8 @@ def spgp_mnist(name = 'mnist_spgp'):
     best_acc = 0  # best test accuracy
     acc_record = list([])
     acc_record2 = list([])
-    evaluator = STCA_ClassifyLoss()
-    snn = MNIST_Net(num_classes, 1, True, 64)
+    evaluator = nn.CrossEntropyLoss()#STCA_ClassifyLoss()
+    snn = MNIST_Net(num_classes, 1, False, 64, spgp=True)
     snn = nn.DataParallel(snn)
     snn.to(device)
     optimizer = torch.optim.Adam(snn.parameters(), lr=learning_rate_2, betas=(0.9, 0.999))
@@ -38,8 +38,9 @@ def spgp_mnist(name = 'mnist_spgp'):
             snn.train()
 
             images = images.float().to(device)
-            labels_ = torch.zeros(images.size()[0], num_classes).scatter_(1, labels.view(-1, 1), 1)
-            labels_ = labels_.to(device)
+            # labels_ = torch.zeros(images.size()[0], num_classes).scatter_(1, labels.view(-1, 1), 1)
+
+            labels_ = labels.to(device)
 
             output = snn(images)
             loss = evaluator(output, labels_)
@@ -48,7 +49,8 @@ def spgp_mnist(name = 'mnist_spgp'):
             running_loss = running_loss + loss.detach().item()
             optimizer.step()
 
-            predicted2 = output.cpu().sum(-1).argmax(dim=1, keepdim=True)
+            #predicted2 = output.cpu().sum(-1).argmax(dim=1, keepdim=True)
+            predicted2 = output.cpu().argmax(dim=1, keepdim=True)
             total2 += float(labels.size(0))
             correct2 += predicted2.eq(labels.cpu().view_as(predicted2)).sum().item()
             if (i + 1) % 50 == 0:
@@ -74,7 +76,7 @@ def spgp_mnist(name = 'mnist_spgp'):
                 optimizer.zero_grad()
                 snn.eval()
                 output = snn(inputs)
-                pred = output.cpu().sum(-1).argmax(dim=1, keepdim=True)
+                pred = output.cpu().argmax(dim=1, keepdim=True)
                 total += float(targets.size(0))
                 correct += pred.eq(targets.cpu().view_as(pred)).sum().item()
                 if batch_idx % 50 == 0:
